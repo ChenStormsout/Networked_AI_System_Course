@@ -8,6 +8,8 @@ packages = [{include = "networked_ai_system_course"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
+scikit-learn = "^1.4.0"
+plotly = "^5.18.0"
 
 
 [build-system]
