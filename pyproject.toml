@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "networked-ai-system-course"
+version = "0.1.0"
+description = ""
+authors = ["Korbinian Pfab <korbinian.pfab@siemens.com>"]
+readme = "README.md"
+packages = [{include = "networked_ai_system_course"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
