@@ -1,7 +1,7 @@
-from sklearn.datasets import make_blobs, make_circles, make_moons, make_biclusters
-from typing import Any, List, Tuple
-from random import random, seed
+from typing import List, Tuple
+
 import numpy as np
+from sklearn.datasets import make_circles, make_moons
 
 
 class DatasetGenerator:
@@ -22,20 +22,21 @@ class DatasetGenerator:
             then randomly set.
         """
         self.call_count = 0
-        self.rotation_proba = np.random.uniform(low=0.2, high=0.7)
+        self.rng=np.random.default_rng()
+        self.rotation_proba = self.rng.uniform(low=0.2, high=0.7)
         self.centers = centers
         if self.centers is None:
             self.centers = [
-                [(random() + 1), (random() + 1)],
-                [(random() + 4), (random() + 2)],
-                [(random() - 1), (random() + 3)],
+                [(self.rng.random() + 1), (self.rng.random() + 1)],
+                [(self.rng.random() + 4), (self.rng.random() + 2)],
+                [(self.rng.random() - 1), (self.rng.random() + 3)],
             ]
         self.stds = stds
         if self.stds is None:
             self.stds = [
-                np.random.uniform(low=0.01, high=0.2),
-                np.random.uniform(low=0.01, high=0.2),
-                np.random.uniform(low=0.01, high=0.2),
+                self.rng.uniform(low=0.01, high=0.2),
+                self.rng.uniform(low=0.01, high=0.2),
+                self.rng.uniform(low=0.01, high=0.2),
             ]
         self.generator_founctions = [
             self.make_blobs,
@@ -51,7 +52,7 @@ class DatasetGenerator:
         Tuple[np.ndarray, np.ndarray]
             Returns x, y why; the features of the new datapoints and the labels.
         """
-        if np.random.random() < self.rotation_proba:
+        if self.rng.random() < self.rotation_proba:
             self.call_count += 1
         X = np.zeros(shape=(len(self.generator_founctions) * 1000, 2), dtype=np.float32)
         y = np.zeros(shape=(len(self.generator_founctions) * 1000), dtype=np.float32)
@@ -106,9 +107,9 @@ class DatasetGenerator:
         """
         X = np.zeros(shape=(1000, 2))
         y = np.zeros(shape=(1000))
-        X[:500, :] = np.random.normal(loc=(0.5, 0.5), scale=std, size=(500, 2))
+        X[:500, :] = self.rng.normal(loc=(0.5, 0.5), scale=std, size=(500, 2))
         y[:500] = 0
-        X[500:, :] = np.random.normal(loc=(-0.5, -0.5), scale=std, size=(500, 2))
+        X[500:, :] = self.rng.normal(loc=(-0.5, -0.5), scale=std, size=(500, 2))
         y[500:] = 1
         means = np.mean(X, axis=0)
         for idx, mean in enumerate(means):
@@ -168,7 +169,6 @@ if __name__ == "__main__":
     # Some test bed
     import plotly.graph_objects as go
 
-    seed(42)
     np.random.seed(42)
     dg = DatasetGenerator()
     X, y = dg()
@@ -176,30 +176,45 @@ if __name__ == "__main__":
     print(X[:5, :])
     print(np.unique(y, return_counts=True))
     fig = go.Figure(
-        go.Scatter(x=X[:, 0], y=X[:, 1], mode="markers", marker=dict(color=["red" if c == 1 else "blue" for c in y]))
+        go.Scatter(
+            x=X[:, 0],
+            y=X[:, 1],
+            mode="markers",
+            marker=dict(color=["red" if c == 1 else "blue" for c in y]),
+        )
     )
-    fig.update_xaxes(range=[-10,10])
-    fig.update_yaxes(range=[-10,10])
-    fig.update_layout(width=800,height=800)
+    fig.update_xaxes(range=[-10, 10])
+    fig.update_yaxes(range=[-10, 10])
+    fig.update_layout(width=800, height=800)
     fig.show()
     # for _ in range(90):
     #     X, y = dg()
-    dg.call_count=45
+    dg.call_count = 45
     X, y = dg()
     fig = go.Figure(
-        go.Scatter(x=X[:, 0], y=X[:, 1], mode="markers", marker=dict(color=["red" if c == 1 else "blue" for c in y]))
+        go.Scatter(
+            x=X[:, 0],
+            y=X[:, 1],
+            mode="markers",
+            marker=dict(color=["red" if c == 1 else "blue" for c in y]),
+        )
     )
-    fig.update_xaxes(range=[-10,10])
-    fig.update_yaxes(range=[-10,10])
-    fig.update_layout(width=800,height=800)
+    fig.update_xaxes(range=[-10, 10])
+    fig.update_yaxes(range=[-10, 10])
+    fig.update_layout(width=800, height=800)
     fig.show()
 
-    dg.call_count=90
+    dg.call_count = 90
     X, y = dg()
     fig = go.Figure(
-        go.Scatter(x=X[:, 0], y=X[:, 1], mode="markers", marker=dict(color=["red" if c == 1 else "blue" for c in y]))
+        go.Scatter(
+            x=X[:, 0],
+            y=X[:, 1],
+            mode="markers",
+            marker=dict(color=["red" if c == 1 else "blue" for c in y]),
+        )
     )
-    fig.update_xaxes(range=[-10,10])
-    fig.update_yaxes(range=[-10,10])
-    fig.update_layout(width=800,height=800)
+    fig.update_xaxes(range=[-10, 10])
+    fig.update_yaxes(range=[-10, 10])
+    fig.update_layout(width=800, height=800)
     fig.show()
