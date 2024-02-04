@@ -1,6 +1,7 @@
-from typing import List
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' # surpressing tensorflow spam messages
+from typing import List
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # surpressing tensorflow spam messages
 
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense, Input, LeakyReLU
@@ -55,6 +56,7 @@ def get_model(
     if not weights is None:
         model.set_weights(weights)
     return model
+
 
 if __name__ == "__main__":
     model = get_model()
