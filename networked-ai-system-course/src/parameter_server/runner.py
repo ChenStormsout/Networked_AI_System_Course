@@ -54,6 +54,23 @@ class Runner:
             a new training result.
         """
         id = payload["id"]
+        self.maintain_result_container(id,payload)
+        model_weights = []
+        for node_id, node_results in self.result_container.items():
+            model_weights += node_results["weights"]
+        global_model = []
+        for layer_index in range(len(model_weights[0])):
+            layer_weights = np.array(
+                [
+                    single_model_weights[layer_index]
+                    for single_model_weights in model_weights
+                ]
+            )
+            # print(layer_weights.shape)
+            global_model.append(np.mean(layer_weights, axis=0).tolist())
+        self.weights = global_model  # payload["best_model_weights"] # Temporary test
+    
+    def maintain_result_container(self, id, payload)->None:
         if not id in self.result_container:
             self.result_container[id] = dict(
                 timestamps=[datetime.now()],
@@ -66,27 +83,12 @@ class Runner:
             self.result_container[id]["scores"].append(payload["best_score"])
             self.result_container[id]["weights"].append(payload["best_model_weights"])
             self.result_container[id]["hp_params"].append(payload["best_hyper_params"])
-        model_weights = []
-        for id, node_results in self.result_container.items():
+        for node_id, node_results in self.result_container.items():
             n_datapoints = len(node_results["timestamps"])
-            if n_datapoints > 10:
+            if n_datapoints > 3:
                 for key, value in node_results.items():
-                    node_results[key] = value[:-10]
-            model_weights += node_results["weights"]
-            self.result_container[id] = node_results
-            # output=[for ]
-            print(len(model_weights[0]))
-        global_model = []
-        for layer_index in range(len(model_weights[0])):
-            layer_weights = np.array(
-                [
-                    single_model_weights[layer_index]
-                    for single_model_weights in model_weights
-                ]
-            )
-            print(layer_weights.shape)
-            global_model.append(np.average(layer_weights, axis=0).tolist())
-        self.weights = global_model  # payload["best_model_weights"] # Temporary test
+                    node_results[key] = value[:-3]
+            self.result_container[node_id] = node_results
 
     def run(self) -> None:
         """Main method causing the runner to have its behaviour.

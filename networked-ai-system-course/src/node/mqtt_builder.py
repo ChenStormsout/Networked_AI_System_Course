@@ -1,12 +1,17 @@
 import time
 
 import paho.mqtt.client as mqtt
+import os
+
+HOST = os.getenv('mqtt_host')
+if HOST is None:
+    HOST="0.0.0.0"
 
 
 def get_mqqt_client(
     client_id: str,
     on_message_func: callable,
-    host: str = "0.0.0.0",
+    host: str = HOST,
     port: int = 1883,
     connection_retries: int = 3,
 ) -> mqtt.Client:
