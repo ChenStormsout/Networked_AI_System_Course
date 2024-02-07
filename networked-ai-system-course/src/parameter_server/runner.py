@@ -87,7 +87,7 @@ class Runner:
             n_datapoints = len(node_results["timestamps"])
             if n_datapoints > 3:
                 for key, value in node_results.items():
-                    node_results[key] = value[:-3]
+                    node_results[key] = value[-3:]
             self.result_container[node_id] = node_results
 
     def run(self) -> None:
