@@ -11,27 +11,27 @@ services:
       # - ./log/:/mosquitto/log/
     networks:
       - network
-  parameter-server:
-    build: 
-      context: ./../src/parameter_server/
-    restart: unless-stopped
-    depends_on:
-      - mqtt-server
-    networks:
-      - network
-    environment:
-      - mqtt_host=mqtt-server
-  node_1:
-    build: 
-      context: ./../src/node/
-    restart: unless-stopped
-    depends_on:
-      - mqtt-server
-      - parameter-server
-    networks:
-      - network
-    environment:
-      - mqtt_host=mqtt-server
+  # parameter-server:
+  #   build: 
+  #     context: ./../src/parameter_server/
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - mqtt-server
+  #   networks:
+  #     - network
+  #   environment:
+  #     - mqtt_host=mqtt-server
+  # node_1:
+  #   build: 
+  #     context: ./../src/node/
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - mqtt-server
+  #     - parameter-server
+  #   networks:
+  #     - network
+  #   environment:
+  #     - mqtt_host=mqtt-server
 
 networks:
   network:

@@ -26,7 +26,7 @@ class Runner:
         self.model: None | Sequential = None
         self.retrieved_update: bool = False
         self.weights: np.ndarray[float] | None = None
-        self.hp_config: Dict = {
+        self.base_config: Dict = {
             "batch_size_mean": 64,
             "batch_size_std": 20,
             "learning_rate_mean": -3,
@@ -35,7 +35,12 @@ class Runner:
             "nesterov_std": 0.3,
             "momentum_mean": 0.5,
             "momentum_std": 0.3,
+            "n_runs_mean": 10,
+            "n_runs_std": 3,
+            "n_epochs_mean": 10,
+            "n_epochs_std": 3,
         }
+        self.hp_config = self.base_config
         self.id = str(uuid1())
         self.mqtt_client = get_mqqt_client(self.id, self.retrieve_global_model)
 
@@ -53,8 +58,31 @@ class Runner:
             the model weights
         """
         self.get_global_model()
-        n_runs = 5
-        n_epochs = 5
+        training_hp_config = self.hp_config
+        for key in training_hp_config.keys():
+            if "_std" in key:
+                if np.random.random() < 0.3:
+                    training_hp_config[key] = self.base_config[key]
+        n_epochs = int(
+            np.clip(
+                np.random.normal(
+                    loc=training_hp_config["n_epochs_mean"],
+                    scale=training_hp_config["n_epochs_std"],
+                ),
+                a_min=1,
+                a_max=10,
+            )
+        )
+        n_runs = int(
+            np.clip(
+                np.random.normal(
+                    loc=training_hp_config["n_runs_mean"],
+                    scale=training_hp_config["n_runs_std"],
+                ),
+                a_min=2,
+                a_max=10,
+            )
+        )
         models = []
         hyper_params = []
         scores = []
@@ -83,6 +111,8 @@ class Runner:
             scores.append(
                 accuracy_score(y_test, model.predict(X_test, verbose=0) > 0.5)
             )
+            hyper_param_dict["n_epochs"] = n_epochs
+            hyper_param_dict["n_runs"] = n_runs
             hyper_params.append(hyper_param_dict)
         best_model_idx = np.argmax(scores)
 
@@ -96,6 +126,7 @@ class Runner:
         self.model = models[best_model_idx]
         self.latest_test_score = results["best_score"]
         print("Best_score: ", results["best_score"])
+        print("Training scores: ", scores)
         return results
 
     def suggest_hyper_params(self, config: Dict) -> Dict:
@@ -178,7 +209,7 @@ class Runner:
                 do_trainig = True
             else:
                 curr_score = accuracy_score(y, self.model.predict(X, verbose=0) > 0.5)
-                if curr_score < self.latest_test_score * 0.9:
+                if curr_score < self.latest_test_score * 0.9 or curr_score < 0.55:
                     do_trainig = True
             if do_trainig:
                 print(f"Training a new model at iteration {iter_counter}")
