@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 services:
   mqtt-server: # Only required for MQTT based communication
     image: eclipse-mosquitto:latest
@@ -12,22 +12,26 @@ services:
     networks:
       - network
   parameter-server:
-    build: 
+    build:
       context: ./../src/parameter_server/
     restart: unless-stopped
     depends_on:
       - mqtt-server
+    volumes:
+      - ./src/parameter_server/logs:/home/dockeruser/app/logs
     networks:
       - network
     environment:
       - mqtt_host=mqtt-server
   node_1:
-    build: 
+    build:
       context: ./../src/node/
     restart: unless-stopped
     depends_on:
       - mqtt-server
       - parameter-server
+    volumes:
+      - ./src/node/logs:/home/dockeruser/app/logs
     networks:
       - network
     environment:
