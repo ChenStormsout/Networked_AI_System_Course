@@ -17,7 +17,10 @@ from runner import Runner
 # - GRADUAL_GENETIC_ALGORITHM_MATING
 
 
-META_LEARNING_MODE = "DIRECT_GENETIC_ALGORITHM_MATING"
+META_LEARNING_MODE = os.getenv("meta_learning_mode")
+if META_LEARNING_MODE is None:
+    raise ValueError("No meta learning mode specified.")
+
 
 r = Runner(META_LEARNING_MODE)
 r.run()
