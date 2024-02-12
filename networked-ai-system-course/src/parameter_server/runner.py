@@ -55,7 +55,6 @@ class Runner:
         initial_params["timestamps"] = str(datetime.now())
         # os.mkdir(LOG_PATH / "parameter_server/")
         (LOG_PATH / "parameter_server").mkdir(parents=True, exist_ok=True)
-        logging.info(LOG_PATH)
         pickle.dump(
             initial_params,
             open(LOG_PATH / "parameter_server/initialization.pkl", mode="wb"),
