@@ -25,6 +25,7 @@ services:
       - mqtt_host=mqtt-server
       - log_path=./logs
       - RANDOM_SEED=42
+      - meta_learning_mode=DIRECT_MEANS
   node_1:
     build:
       context: ./../src/node/

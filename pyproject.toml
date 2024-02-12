@@ -13,6 +13,7 @@ plotly = "^5.18.0"
 tensorflow = "2.15"
 paho-mqtt = "^1.6.1"
 numpy = "^1.26.3"
+loguru = "^0.7.2"
 
 
 [build-system]
