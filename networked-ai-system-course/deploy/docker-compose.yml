@@ -35,7 +35,7 @@ services:
     networks:
       - network
     volumes:
-      - ./src/experiment_name/logs:/home/dockeruser/app/logs
+      - ./../data/experiment_name/logs:/home/dockeruser/app/logs
     environment:
       - mqtt_host=mqtt-server
       - log_path=./logs

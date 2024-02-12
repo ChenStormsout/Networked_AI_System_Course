@@ -1,16 +1,16 @@
 import json
 import os
+import pickle
+import sys
 import time
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List
-import pickle
 
-import sys
 import numpy as np
-from mqtt_builder import get_mqqt_client
 from loguru import logger
+from mqtt_builder import get_mqqt_client
 
 logger.add(sys.stderr, format="{time} - {level} - {message}", level="DEBUG")
 # logging.basicConfig(
@@ -25,8 +25,6 @@ if LOG_PATH is None:
     LOG_PATH = Path("./networked-ai-system-course/tmp/bash")
 else:
     LOG_PATH = Path(LOG_PATH)
-
-logging.info(LOG_PATH)
 
 
 class Runner:
@@ -55,7 +53,6 @@ class Runner:
         initial_params["timestamps"] = str(datetime.now())
         # os.mkdir(LOG_PATH / "parameter_server/")
         (LOG_PATH / "parameter_server").mkdir(parents=True, exist_ok=True)
-        logging.info(LOG_PATH)
         pickle.dump(
             initial_params,
             open(LOG_PATH / "parameter_server/initialization.pkl", mode="wb"),
