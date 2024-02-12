@@ -14,10 +14,13 @@ from mqtt_builder import get_mqqt_client
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from tensorflow.keras import Sequential  # pyright: ignore
+from copy import deepcopy
+from datetime import datetime
+import pickle
 
 LOG_PATH = os.getenv("log_path")
 if LOG_PATH is None:
-    LOG_PATH = Path("./networked-ai-system-course/bash/data")
+    LOG_PATH = Path("./networked-ai-system-course/tmp/bash")
 else:
     LOG_PATH = Path(LOG_PATH)
 
@@ -50,6 +53,16 @@ class Runner:
         self.hp_config = self.base_config
         self.id = str(uuid1())
         self.mqtt_client = get_mqqt_client(self.id, self.retrieve_global_model)
+
+        initial_params = deepcopy(self.hp_config)
+        initial_params["weights"] = self.weights
+        initial_params["timestamps"] = str(datetime.now())
+        # os.mkdir(LOG_PATH / "parameter_server/")
+        (LOG_PATH / f"{self.id}").mkdir(parents=True, exist_ok=True)
+        pickle.dump(
+            initial_params,
+            open(LOG_PATH / f"{self.id}/initialization.pkl", mode="wb"),
+        )
 
     def train_models(
         self, X: np.ndarray[float], y: np.ndarray[float]
@@ -93,7 +106,13 @@ class Runner:
         models = []
         hyper_params = []
         scores = []
+        train_log = dict()
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+        for key, value in self.hp_config.items():
+            train_log[key] = value
+        train_log["n_runs"] = n_runs
+        train_log["n_epochs"] = n_epochs
+        self.weights = self.weights
         for _ in range(n_runs):
             hyper_param_dict = self.suggest_hyper_params(self.hp_config)
             model = get_model(
@@ -103,10 +122,12 @@ class Runner:
                 hyper_param_dict["nesterov"],
             )
             if _ == 0:
+                pre_training_score = accuracy_score(y_test, model.predict(X_test, verbose=0) > 0.5)
                 print(
                     "Pre-training performance: ",
-                    accuracy_score(y_test, model.predict(X_test, verbose=0) > 0.5),
+                    pre_training_score
                 )
+                train_log["pre_training_score"] = pre_training_score
             model.fit(
                 X_train,
                 y_train,
@@ -121,6 +142,7 @@ class Runner:
             hyper_param_dict["n_epochs"] = n_epochs
             hyper_param_dict["n_runs"] = n_runs
             hyper_params.append(hyper_param_dict)
+        train_log["scores"] = scores
         best_model_idx = np.argmax(scores)
 
         results = dict()
@@ -129,11 +151,17 @@ class Runner:
         results["best_model_weights"] = [
             arr.tolist() for arr in models[best_model_idx].get_weights()
         ]
+        for key, value in results.items():
+            train_log[key] = value
         # print(models[best_model_idx].get_weights())
         self.model = models[best_model_idx]
         self.latest_test_score = results["best_score"]
         print("Best_score: ", results["best_score"])
         print("Training scores: ", scores)
+        pickle.dump(
+            train_log,
+            open(LOG_PATH / f"{self.id}/training_{time.time()}.pkl", mode="wb"),
+        )
         return results
 
     def suggest_hyper_params(self, config: Dict) -> Dict:
@@ -212,12 +240,21 @@ class Runner:
             iter_counter += 1
             X, y = self.dg()
             do_trainig = False
+            loop_log = dict()
             if self.model is None:
                 do_trainig = True
+                curr_score = None
             else:
                 curr_score = accuracy_score(y, self.model.predict(X, verbose=0) > 0.5)
                 if curr_score < self.latest_test_score * 0.9 or curr_score < 0.55:
                     do_trainig = True
+            loop_log["curr_score"] = curr_score
+            loop_log["iter_counter"] = iter_counter
+            loop_log["DG_rotation"] = self.dg.call_count
+            pickle.dump(
+                loop_log,
+                open(LOG_PATH / f"{self.id}/iter_{iter_counter}.pkl", mode="wb"),
+            )
             if do_trainig:
                 print(f"Training a new model at iteration {iter_counter}")
                 training_result = self.train_models(X, y)

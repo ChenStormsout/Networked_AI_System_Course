@@ -17,8 +17,6 @@ if LOG_PATH is None:
 else:
     LOG_PATH = Path(LOG_PATH)
 
-logging.info(LOG_PATH)
-
 class Runner:
     def __init__(self, meta_learning_mode: str) -> None:
         self.meta_learning_mode = meta_learning_mode
@@ -45,7 +43,6 @@ class Runner:
         initial_params["timestamps"] = str(datetime.now())
         # os.mkdir(LOG_PATH / "parameter_server/")
         (LOG_PATH / "parameter_server").mkdir(parents=True, exist_ok=True)
-        logging.info(LOG_PATH)
         pickle.dump(
             initial_params,
             open(LOG_PATH / "parameter_server/initialization.pkl", mode="wb"),
