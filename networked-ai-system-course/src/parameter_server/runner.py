@@ -1,16 +1,29 @@
 import json
+import os
+import time
+from copy import deepcopy
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List
+import pickle
 
 import numpy as np
 from mqtt_builder import get_mqqt_client
+import logging
 
+LOG_PATH = os.getenv("log_path")
+if LOG_PATH is None:
+    LOG_PATH = Path("./networked-ai-system-course/tmp/bash")
+else:
+    LOG_PATH = Path(LOG_PATH)
+
+logging.info(LOG_PATH)
 
 class Runner:
     def __init__(self, meta_learning_mode: str) -> None:
         self.meta_learning_mode = meta_learning_mode
         self.mqtt_client = get_mqqt_client("server", self.respond)
-        self.weights: None | np.ndarray = None
+        self.weights: None | List = None
         self.hp_config = {
             "batch_size_mean": 64,
             "batch_size_std": 20,
@@ -26,6 +39,17 @@ class Runner:
             "n_epochs_std": 3,
         }
         self.result_container: Dict = {}
+        initial_params = deepcopy(self.hp_config)
+        initial_params["weights"] = self.weights
+        initial_params["meta_learning_mode"] = self.meta_learning_mode
+        initial_params["timestamps"] = str(datetime.now())
+        # os.mkdir(LOG_PATH / "parameter_server/")
+        (LOG_PATH / "parameter_server").mkdir(parents=True, exist_ok=True)
+        logging.info(LOG_PATH)
+        pickle.dump(
+            initial_params,
+            open(LOG_PATH / "parameter_server/initialization.pkl", mode="wb"),
+        )
 
     def respond(self, client, userdata, msg) -> None:
         """Method to override the on_message method of the Mqtt client.
@@ -75,6 +99,7 @@ class Runner:
             global_model.append(np.mean(layer_weights, axis=0).tolist())
         self.weights = global_model  # payload["best_model_weights"] # Temporary test
         self.update_hp_config()
+        self.log_step()
 
     def maintain_result_container(self, id, payload) -> None:
         if not id in self.result_container:
@@ -136,7 +161,7 @@ class Runner:
                 )
             elif self.meta_learning_mode == "DIRECT_GENETIC_ALGORITHM_MATING":
                 new_config = self.genetic_algorithm_mating_hp_update(
-                    hp_values, hp_names, scores,update_rate=1.
+                    hp_values, hp_names, scores, update_rate=1.0
                 )
             elif self.meta_learning_mode == "GRADUAL_GENETIC_ALGORITHM_MATING":
                 new_config = self.genetic_algorithm_mating_hp_update(
@@ -260,7 +285,9 @@ class Runner:
         """
         new_config = dict()
         for name in hp_names:
-            population = np.random.choice(hp_values[name], size=500, p=np.array(scores)/sum(scores))
+            population = np.random.choice(
+                hp_values[name], size=500, p=np.array(scores) / sum(scores)
+            )
             new_config[name + "_mean"] = (1 - update_rate) * self.hp_config[
                 name + "_mean"
             ] + update_rate * np.average(population)
@@ -268,6 +295,20 @@ class Runner:
                 name + "_std"
             ] + update_rate * np.std(population)
         return new_config
+
+    def log_step(self):
+        logging.info("Starting to log")
+        logging.info(LOG_PATH)
+        print(LOG_PATH)
+        log_data = deepcopy(self.hp_config)
+        for key in self.result_container.keys():
+            log_data[key] = self.result_container[key]
+        log_data["weights"] = self.weights
+        log_data["timestamp"] = datetime.now()
+        pickle.dump(
+            log_data,
+            open(LOG_PATH / f"parameter_server/{str(time.time())}.pkl", mode="wb"),
+        )
 
     def run(self) -> None:
         """Main method causing the runner to have its behaviour.
