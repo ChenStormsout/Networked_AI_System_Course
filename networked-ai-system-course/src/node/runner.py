@@ -173,6 +173,7 @@ class Runner:
          - If a model is trained, communicate the results to the central server
          - Sleep 0.5 seconds"""
         iter_counter = 0
+        stop_count = 1000
         logger.info("Starting to run.")
         while True:
             iter_counter += 1
@@ -189,6 +190,11 @@ class Runner:
                 training_result = self.train_models(X, y)
                 self.communicate_update(training_result)  # tbd
             time.sleep(0.5)
+            if iter_counter >= stop_count:
+                logger.info(
+                    f"Node {self.id} reached {stop_count} iterations. Stopping."
+                )
+                sys.exit(0)
 
     def get_global_model(self) -> None:
         """Method to simulate pull behaviour in mqtt, which is
