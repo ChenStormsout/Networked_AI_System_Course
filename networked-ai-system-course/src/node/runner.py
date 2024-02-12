@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # surpressing tensorflow spam messages
 import json
+from pathlib import Path
 from uuid import uuid1
 import sys
 import numpy as np
@@ -12,7 +13,13 @@ from model import get_model
 from mqtt_builder import get_mqqt_client
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
-from tensorflow.keras import Sequential
+from tensorflow.keras import Sequential  # pyright: ignore
+
+LOG_PATH = os.getenv("log_path")
+if LOG_PATH is None:
+    LOG_PATH = Path("./networked-ai-system-course/bash/data")
+else:
+    LOG_PATH = Path(LOG_PATH)
 
 from loguru import logger
 

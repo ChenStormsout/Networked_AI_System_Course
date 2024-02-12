@@ -17,12 +17,13 @@ services:
     restart: unless-stopped
     depends_on:
       - mqtt-server
-    volumes:
-      - ./src/parameter_server/logs:/home/dockeruser/app/logs
     networks:
       - network
+    volumes:
+      - ./../data/experiment_name/logs:/home/dockeruser/app/logs
     environment:
       - mqtt_host=mqtt-server
+      - log_path=./logs
       - RANDOM_SEED=42
   node_1:
     build:
@@ -31,12 +32,13 @@ services:
     depends_on:
       - mqtt-server
       - parameter-server
-    volumes:
-      - ./src/node/logs:/home/dockeruser/app/logs
     networks:
       - network
+    volumes:
+      - ./src/experiment_name/logs:/home/dockeruser/app/logs
     environment:
       - mqtt_host=mqtt-server
+      - log_path=./logs
       - RANDOM_SEED=42
 
 networks:
