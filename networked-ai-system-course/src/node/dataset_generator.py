@@ -1,7 +1,13 @@
 from typing import List, Tuple
-
+import sys, os
 import numpy as np
 from sklearn.datasets import make_circles, make_moons
+from loguru import logger
+
+RANDOM_SEED = os.environ["RANDOM_SEED"]
+
+
+logger.add(sys.stderr, format="{time} - {level} - {message}", level="DEBUG")
 
 
 class DatasetGenerator:
@@ -22,7 +28,7 @@ class DatasetGenerator:
             then randomly set.
         """
         self.call_count = 0
-        self.rng=np.random.default_rng()
+        self.rng = np.random.default_rng()
         self.rotation_proba = self.rng.uniform(low=0.2, high=0.7)
         self.centers = centers
         if self.centers is None:
@@ -172,9 +178,9 @@ if __name__ == "__main__":
     np.random.seed(42)
     dg = DatasetGenerator()
     X, y = dg()
-    print(X.shape, y.shape)
-    print(X[:5, :])
-    print(np.unique(y, return_counts=True))
+    logger.info(f"Data shape: {X.shape, y.shape}")
+    logger.info(f"{X[:5, :]}")
+    logger.info(f"Unique values: {np.unique(y, return_counts=True)}")
     fig = go.Figure(
         go.Scatter(
             x=X[:, 0],

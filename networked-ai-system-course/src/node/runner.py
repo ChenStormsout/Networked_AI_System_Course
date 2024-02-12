@@ -5,7 +5,7 @@ from typing import Dict, List, Tuple
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # surpressing tensorflow spam messages
 import json
 from uuid import uuid1
-
+import sys
 import numpy as np
 from dataset_generator import DatasetGenerator
 from model import get_model
@@ -13,6 +13,11 @@ from mqtt_builder import get_mqqt_client
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from tensorflow.keras import Sequential
+
+from loguru import logger
+
+
+logger.add(sys.stderr, format="{time} - {level} - {message}", level="DEBUG")
 
 
 class Runner:
@@ -68,9 +73,8 @@ class Runner:
                 hyper_param_dict["nesterov"],
             )
             if _ == 0:
-                print(
-                    "Pre-training performance: ",
-                    accuracy_score(y_test, model.predict(X_test, verbose=0) > 0.5),
+                logger.info(
+                    f"Pre-training performance: {accuracy_score(y_test, model.predict(X_test, verbose=0) > 0.5)}",
                 )
             model.fit(
                 X_train,
@@ -95,7 +99,7 @@ class Runner:
         # print(models[best_model_idx].get_weights())
         self.model = models[best_model_idx]
         self.latest_test_score = results["best_score"]
-        print("Best_score: ", results["best_score"])
+        logger.info(f'Best_score: {results["best_score"]}')
         return results
 
     def suggest_hyper_params(self, config: Dict) -> Dict:
@@ -169,7 +173,7 @@ class Runner:
          - If a model is trained, communicate the results to the central server
          - Sleep 0.5 seconds"""
         iter_counter = 0
-        print("Starting to run.")
+        logger.info("Starting to run.")
         while True:
             iter_counter += 1
             X, y = self.dg()
@@ -181,7 +185,7 @@ class Runner:
                 if curr_score < self.latest_test_score * 0.9:
                     do_trainig = True
             if do_trainig:
-                print(f"Training a new model at iteration {iter_counter}")
+                logger.info(f"Training a new model at iteration {iter_counter}")
                 training_result = self.train_models(X, y)
                 self.communicate_update(training_result)  # tbd
             time.sleep(0.5)
@@ -203,7 +207,7 @@ class Runner:
                 break
             time.sleep(0.1)
         if not self.retrieved_update:
-            print("Warning: Did not retrieve global model in time.")
+            logger.warning("Did not retrieve global model in time.")
 
     def retrieve_global_model(self, client, userdata, msg) -> None:
         """Method that is used to override the on_message of the
@@ -228,7 +232,7 @@ class Runner:
         training_results : Tuple
             Training results returned by self.train_models.
         """
-        print("Sending training results to server")
+        logger.info("Sending training results to server")
         training_results["id"] = self.id
         self.mqtt_client.publish("server_update", json.dumps(training_results))
 

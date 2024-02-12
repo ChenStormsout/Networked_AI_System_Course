@@ -23,6 +23,7 @@ services:
       - network
     environment:
       - mqtt_host=mqtt-server
+      - RANDOM_SEED=42
   node_1:
     build:
       context: ./../src/node/
@@ -36,6 +37,7 @@ services:
       - network
     environment:
       - mqtt_host=mqtt-server
+      - RANDOM_SEED=42
 
 networks:
   network:

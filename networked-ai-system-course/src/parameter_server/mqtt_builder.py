@@ -1,12 +1,17 @@
 import time
-
+import sys
 import paho.mqtt.client as mqtt
 import os
+
+from loguru import logger
+
+
+logger.add(sys.stderr, format="{time} - {level} - {message}", level="DEBUG")
 
 HOST = os.getenv('mqtt_host')
 if HOST is None:
     HOST="0.0.0.0"
-print(HOST)
+logger.info(f"mqtt_host: {HOST}")
 
 def get_mqqt_client(
     client_id: str,
@@ -47,14 +52,14 @@ def get_mqqt_client(
     mqtt_client.on_message = on_message_func
     response_code = None
     for i in range(connection_retries):
-        print(f"Trying to connect to mqtt server. Attempt: {i+1}")
+        logger.info(f"Trying to connect to mqtt server. Attempt: {i+1}")
         try:
             response_code = mqtt_client.connect(host=host, port=port)
             if response_code == 0:
-                print("Connection succeded")
+                logger.info("Connection succeded")
                 break
         except Exception as error:
-            print("Connection failed")
+            logger.error("Connection failed")
             time.sleep(1)
             if i == connection_retries - 1:
                 raise ConnectionRefusedError(

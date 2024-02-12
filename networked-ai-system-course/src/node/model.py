@@ -1,12 +1,24 @@
 import os
+import platform, sys
 from typing import List
+import sys
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # surpressing tensorflow spam messages
 
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense, Input, LeakyReLU
 from tensorflow.keras.losses import BinaryCrossentropy
-from tensorflow.keras.optimizers.experimental import SGD
+
+if platform.processor() == "arm" and sys.platform == "darwin":
+    from tensorflow.keras.optimizers.legacy import SGD
+else:
+    from tensorflow.keras.optimizers.experimental import SGD
+
+
+from loguru import logger
+
+
+logger.add(sys.stderr, format="{time} - {level} - {message}", level="DEBUG")
 
 
 def get_model(
@@ -60,4 +72,4 @@ def get_model(
 
 if __name__ == "__main__":
     model = get_model()
-    print(model.summary())
+    logger.info(f"Model summary: {model.summary()}")

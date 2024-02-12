@@ -1,9 +1,17 @@
 import json
 from datetime import datetime
 from typing import Dict
-
+import sys
 import numpy as np
 from mqtt_builder import get_mqqt_client
+from loguru import logger
+
+
+logger.add(sys.stderr, format="{time} - {level} - {message}", level="DEBUG")
+# logging.basicConfig(
+#     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s", level=logging.DEBUG
+# )
+# logger = logging.getLogger(__name__)
 
 
 class Runner:
@@ -26,15 +34,15 @@ class Runner:
         """Method to override the on_message method of the Mqtt client.
         Defines the main behaviour of the server in regards to send messages."""
         payload = json.loads(msg.payload)
-        print("Got the payload: ", payload)
+        logger.info(f"Got the payload: {payload}")
         if "target_topic" in payload:
-            print("Target topic recieved:", payload["target_topic"])
+            logger.info(f'Target topic recieved: {payload["target_topic"]}')
             self.mqtt_client.publish(
                 payload["target_topic"],
                 json.dumps(dict(weights=self.weights, hp_config=self.hp_config)),
             )
         else:
-            print("Trying to aggregate...")
+            logger.info("Trying to aggregate...")
             self.update_global_model(payload)
 
     def update_global_model(self, payload: Dict):
@@ -54,7 +62,7 @@ class Runner:
             a new training result.
         """
         id = payload["id"]
-        self.maintain_result_container(id,payload)
+        self.maintain_result_container(id, payload)
         model_weights = []
         for node_id, node_results in self.result_container.items():
             model_weights += node_results["weights"]
@@ -69,8 +77,8 @@ class Runner:
             # print(layer_weights.shape)
             global_model.append(np.mean(layer_weights, axis=0).tolist())
         self.weights = global_model  # payload["best_model_weights"] # Temporary test
-    
-    def maintain_result_container(self, id, payload)->None:
+
+    def maintain_result_container(self, id, payload) -> None:
         if not id in self.result_container:
             self.result_container[id] = dict(
                 timestamps=[datetime.now()],
