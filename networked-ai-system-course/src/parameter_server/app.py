@@ -20,7 +20,6 @@ META_LEARNING_MODE = os.getenv("meta_learning_mode")
 if META_LEARNING_MODE is None:
     raise ValueError("No meta learning mode specified.")
 
-
 # Choose from AGGREGATION_METHOD from the following:
 AGGREGATION_METHOD = "WEIGHTED AVERAGE - RECENCY"
 #WEIGHTED AVERAGE - RECENCY
