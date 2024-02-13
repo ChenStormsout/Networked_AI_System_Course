@@ -12,14 +12,12 @@ from typing import Dict, List
 import numpy as np
 from loguru import logger
 from mqtt_builder import get_mqqt_client
-
+logger.remove()
 logger.add(sys.stderr, format="{time} - {level} - {message}", level="DEBUG")
 # logging.basicConfig(
 #     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s", level=logging.DEBUG
 # )
 # logger = logging.getLogger(__name__)
-
-import logging
 
 LOG_PATH = os.getenv("log_path")
 if LOG_PATH is None:
@@ -419,9 +417,6 @@ class Runner:
         return new_config
 
     def log_step(self):
-        logging.info("Starting to log")
-        logging.info(LOG_PATH)
-        logger.info(f"LOG_PATH: {LOG_PATH}")
         log_data = deepcopy(self.hp_config)
         for key in self.result_container.keys():
             log_data[key] = self.result_container[key]
@@ -605,20 +600,6 @@ class Runner:
                 name + "_std"
             ] + update_rate * np.std(population)
         return new_config
-
-    def log_step(self):
-        logging.info("Starting to log")
-        logging.info(LOG_PATH)
-        logger.info(f"LOG_PATH: {LOG_PATH}")
-        log_data = deepcopy(self.hp_config)
-        for key in self.result_container.keys():
-            log_data[key] = self.result_container[key]
-        log_data["weights"] = self.weights
-        log_data["timestamp"] = datetime.now()
-        pickle.dump(
-            log_data,
-            open(LOG_PATH / f"parameter_server/{str(time.time())}.pkl", mode="wb"),
-        )
 
     def run(self) -> None:
         """Main method causing the runner to have its behaviour.

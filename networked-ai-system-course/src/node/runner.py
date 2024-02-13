@@ -26,7 +26,7 @@ else:
 
 from loguru import logger
 
-
+logger.remove()
 logger.add(sys.stderr, format="{time} - {level} - {message}", level="DEBUG")
 
 
@@ -128,9 +128,8 @@ class Runner:
             )
             if _ == 0:
                 pre_training_score = accuracy_score(y_test, model.predict(X_test, verbose=0) > 0.5)
-                print(
-                    "Pre-training performance: ",
-                    pre_training_score
+                logger.info(
+                    f"Pre-training performance: {pre_training_score}",
                 )
                 train_log["pre_training_score"] = pre_training_score
             model.fit(
@@ -161,8 +160,8 @@ class Runner:
         # print(models[best_model_idx].get_weights())
         self.model = models[best_model_idx]
         self.latest_test_score = results["best_score"]
-        print("Best_score: ", results["best_score"])
-        print("Training scores: ", scores)
+        logger.info(f"Best_score: {results['best_score']}")
+        logger.info(f"Training scores: {scores}" )
         pickle.dump(
             train_log,
             open(LOG_PATH / f"{self.id}/training_{time.time()}.pkl", mode="wb"),
