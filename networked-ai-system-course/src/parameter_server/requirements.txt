@@ -1,3 +1,4 @@
 tensorflow ==2.15.0
 paho-mqtt ==1.6.1
 numpy ==1.26.3
+loguru==0.7.2
