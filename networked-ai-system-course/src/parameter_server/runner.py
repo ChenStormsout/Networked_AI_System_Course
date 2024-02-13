@@ -4,7 +4,8 @@ import pickle
 import sys
 import time
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timedelta
+from itertools import chain
 from pathlib import Path
 from typing import Dict, List
 
@@ -28,8 +29,9 @@ else:
 
 
 class Runner:
-    def __init__(self, meta_learning_mode: str) -> None:
+    def __init__(self, meta_learning_mode: str, aggregation_method: str) -> None:
         self.meta_learning_mode = meta_learning_mode
+        self.aggregation_method = aggregation_method
         self.mqtt_client = get_mqqt_client("server", self.respond)
         self.weights: None | List = None
         self.hp_config = {
@@ -95,6 +97,41 @@ class Runner:
         for node_id, node_results in self.result_container.items():
             model_weights += node_results["weights"]
         global_model = []
+
+        if(self.aggregation_method=="AVERAGE AGGREGATION"):
+            global_model=self.average_aggregation(model_weights)
+        elif(self.aggregation_method=="FIXED CLIPPED AVERAGE AGGREGATION"):
+            global_model=self.median_aggregation(model_weights)
+        elif(self.aggregation_method=="DYNAMIC CLIPPED AVERAGE AGGREGATION"):
+            global_model=self.dynamic_clip_aggregation(model_weights)
+        elif(self.aggregation_method=="MEADIAN AGGREGATION"):
+            global_model=self.fixed_clip_aggregation(model_weights)
+        elif(self.aggregation_method=="WEIGHTED AVERAGE - PERFORMANCE SCORES"):
+            model_scores = []
+            model_scores = [node_results["scores"] for node_results in self.result_container.values()]
+            score_weights = np.exp(model_scores) / np.sum(np.exp(model_scores))
+            global_model=self.weighted_score_aggregation(score_weights, model_weights)
+        elif(self.aggregation_method=="WEIGHTED AVERAGE - RECENCY"):
+            decay_rate = 0.9
+            timestamps = chain.from_iterable([node_results["timestamps"] for node_results in self.result_container.values()])
+            time_diff_seconds = np.array([(datetime.now() - timestamp).total_seconds() for timestamp in timestamps])
+            recency_weights = np.exp(-decay_rate * time_diff_seconds)
+            global_model=self.weighted_recency_aggregation(recency_weights,model_weights)
+        elif(self.aggregation_method=="WEIGHTED AVERAGE - PUNISHING UPDATES"):
+            current_time = datetime.now()
+            minutes_ago = current_time - timedelta(minutes=1)
+            recent_update_counts = sum(1 for timestamp in chain.from_iterable([node_results["timestamps"] for node_results in self.result_container.values()])
+                                   if timestamp >= minutes_ago)            
+            punish_weights = 1 / (recent_update_counts + 1)
+            global_model=self.weighted_punish_aggregation(punish_weights,model_weights)
+                
+        self.weights = global_model  # payload["best_model_weights"] # Temporary test
+        self.update_hp_config()
+        self.log_step()
+            
+
+    def average_aggregation(self, model_weights):
+        result = []
         for layer_index in range(len(model_weights[0])):
             layer_weights = np.array(
                 [
@@ -102,11 +139,89 @@ class Runner:
                     for single_model_weights in model_weights
                 ]
             )
-            # print(layer_weights.shape)
-            global_model.append(np.mean(layer_weights, axis=0).tolist())
-        self.weights = global_model  # payload["best_model_weights"] # Temporary test
-        self.update_hp_config()
-        self.log_step()
+            result.append(np.mean(layer_weights, axis=0).tolist())
+        return result
+        
+    def median_aggregation(self, model_weights):
+        result = []
+        for layer_index in range(len(model_weights[0])):
+            layer_weights = np.array(
+                [
+                    single_model_weights[layer_index]
+                    for single_model_weights in model_weights
+                ]
+            )
+            result.append(np.median(layer_weights, axis=0).tolist())
+        return result
+        
+    def dynamic_clip_aggregation(self, model_weights):
+        result = []
+        for layer_index in range(len(model_weights[0])):
+            layer_weights = np.array(
+                [
+                    single_model_weights[layer_index]
+                    for single_model_weights in model_weights
+                ]
+            )
+            lower_quantile, upper_quantile = np.percentile(layer_weights, [25, 75], axis=0)
+            delta = upper_quantile - lower_quantile
+            lower_clip_value = lower_quantile - 1.5 * delta
+            upper_clip_value = upper_quantile + 1.5 * delta
+            clipped_weights = np.clip(layer_weights, lower_clip_value, upper_clip_value)
+            result.append(np.mean(clipped_weights, axis=0).tolist())
+        return result
+    
+    def fixed_clip_aggregation(self, model_weights):
+        result = []
+        for layer_index in range(len(model_weights[0])):
+            layer_weights = np.array(
+                [
+                    single_model_weights[layer_index]
+                    for single_model_weights in model_weights
+                ]
+            )
+            weight_range = 0.5 - (-0.5)  # Range of typical weights
+            fraction_of_range = 0.1  
+            clip_threshold = fraction_of_range * weight_range
+            clipped_weights = np.clip(layer_weights, -clip_threshold, clip_threshold)
+            result.append(np.mean(clipped_weights, axis=0).tolist()  )
+        return result
+    
+    def weighted_score_aggregation(self, score_weights, model_weights):
+        result = []
+        for layer_index in range(len(model_weights[0])):
+            layer_weights = np.array(
+                [
+                    single_model_weights[layer_index]
+                    for single_model_weights in model_weights
+                ]
+            )
+            result.append(np.average(layer_weights, axis=0, weights=score_weights.ravel()).tolist())
+        return result
+
+    def weighted_recency_aggregation(self, recency_weights, model_weights):
+        result = []
+        for layer_index in range(len(model_weights[0])):
+            layer_weights = np.array(
+                [
+                    single_model_weights[layer_index]
+                    for single_model_weights in model_weights
+                ]
+            )
+            result.append(np.average(layer_weights, axis=0, weights=recency_weights).tolist())
+        return result
+    
+    def weighted_punish_aggregation(self, punish_weights, model_weights):
+        result = []
+        for layer_index in range(len(model_weights[0])):
+            layer_weights = np.array(
+                [
+                    single_model_weights[layer_index]
+                    for single_model_weights in model_weights
+                ]
+            )
+            result.append(np.average(layer_weights, axis=0, weights=np.full(len(layer_weights), punish_weights)).tolist())
+        return result
 
     def maintain_result_container(self, id, payload) -> None:
         if not id in self.result_container:
