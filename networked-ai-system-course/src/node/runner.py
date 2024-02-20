@@ -27,7 +27,7 @@ else:
 from loguru import logger
 
 logger.remove()
-logger.add(sys.stderr, format="{time} - {level} - {message}", level="DEBUG")
+logger.add(sys.stderr, format="{time} - {level} - {message}", level="INFO")
 
 
 class Runner:
@@ -117,7 +117,8 @@ class Runner:
             train_log[key] = value
         train_log["n_runs"] = n_runs
         train_log["n_epochs"] = n_epochs
-        self.weights = self.weights
+        train_log["weights"] = self.weights
+        train_log["iter_count"] = self.iter_counter
         for _ in range(n_runs):
             hyper_param_dict = self.suggest_hyper_params(self.hp_config)
             model = get_model(
@@ -127,7 +128,9 @@ class Runner:
                 hyper_param_dict["nesterov"],
             )
             if _ == 0:
-                pre_training_score = accuracy_score(y_test, model.predict(X_test, verbose=0) > 0.5)
+                pre_training_score = accuracy_score(
+                    y_test, model.predict(X_test, verbose=0) > 0.5
+                )
                 logger.info(
                     f"Pre-training performance: {pre_training_score}",
                 )
@@ -155,13 +158,15 @@ class Runner:
         results["best_model_weights"] = [
             arr.tolist() for arr in models[best_model_idx].get_weights()
         ]
+        self.weights = models[best_model_idx].get_weights()
         for key, value in results.items():
             train_log[key] = value
+        train_log["timestamp"] = datetime.now()
         # print(models[best_model_idx].get_weights())
         self.model = models[best_model_idx]
         self.latest_test_score = results["best_score"]
         logger.info(f"Best_score: {results['best_score']}")
-        logger.info(f"Training scores: {scores}" )
+        logger.info(f"Training scores: {scores}")
         pickle.dump(
             train_log,
             open(LOG_PATH / f"{self.id}/training_{time.time()}.pkl", mode="wb"),
@@ -238,11 +243,11 @@ class Runner:
            set
          - If a model is trained, communicate the results to the central server
          - Sleep 0.5 seconds"""
-        iter_counter = 0
+        self.iter_counter = 0
         stop_count = 1000
         logger.info("Starting to run.")
         while True:
-            iter_counter += 1
+            self.iter_counter += 1
             X, y = self.dg()
             do_trainig = False
             loop_log = dict()
@@ -254,18 +259,19 @@ class Runner:
                 if curr_score < self.latest_test_score * 0.9 or curr_score < 0.55:
                     do_trainig = True
             loop_log["curr_score"] = curr_score
-            loop_log["iter_counter"] = iter_counter
+            loop_log["iter_counter"] = self.iter_counter
             loop_log["DG_rotation"] = self.dg.call_count
+            loop_log["timestamp"] = datetime.now()
             pickle.dump(
                 loop_log,
-                open(LOG_PATH / f"{self.id}/iter_{iter_counter}.pkl", mode="wb"),
+                open(LOG_PATH / f"{self.id}/iter_{self.iter_counter}.pkl", mode="wb"),
             )
             if do_trainig:
-                logger.info(f"Training a new model at iteration {iter_counter}")
+                logger.info(f"Training a new model at iteration {self.iter_counter}")
                 training_result = self.train_models(X, y)
                 self.communicate_update(training_result)  # tbd
             time.sleep(0.5)
-            if iter_counter >= stop_count:
+            if self.iter_counter >= stop_count:
                 logger.info(
                     f"Node {self.id} reached {stop_count} iterations. Stopping."
                 )
@@ -300,8 +306,8 @@ class Runner:
             self.weights = [
                 np.array(layer_weights) for layer_weights in payload["weights"]
             ]
-        else:
-            self.weights = None
+        # else:
+        #     self.weights = None
         self.hp_config = payload["hp_config"]
         self.retrieved_update = True
 

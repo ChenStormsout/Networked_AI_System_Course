@@ -13,7 +13,7 @@ import numpy as np
 from loguru import logger
 from mqtt_builder import get_mqqt_client
 logger.remove()
-logger.add(sys.stderr, format="{time} - {level} - {message}", level="DEBUG")
+logger.add(sys.stderr, format="{time} - {level} - {message}", level="INFO")
 # logging.basicConfig(
 #     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s", level=logging.DEBUG
 # )
@@ -70,7 +70,7 @@ class Runner:
                 json.dumps(dict(weights=self.weights, hp_config=self.hp_config)),
             )
         else:
-            logger.info("Trying to aggregate...")
+            logger.info(f"Trying to aggregate with {self.aggregation_method}...")
             self.update_global_model(payload)
 
     def update_global_model(self, payload: Dict):
@@ -96,33 +96,33 @@ class Runner:
             model_weights += node_results["weights"]
         global_model = []
 
-        if(self.aggregation_method=="AVERAGE AGGREGATION"):
+        if(self.aggregation_method=="AVERAGE_AGGREGATION"):
             global_model=self.average_aggregation(model_weights)
-        elif(self.aggregation_method=="FIXED CLIPPED AVERAGE AGGREGATION"):
+        elif(self.aggregation_method=="MEDIAN_AGGREGATION"):
             global_model=self.median_aggregation(model_weights)
-        elif(self.aggregation_method=="DYNAMIC CLIPPED AVERAGE AGGREGATION"):
+        elif(self.aggregation_method=="DYNAMIC_CLIPPED_AVERAGE_AGGREGATION"):
             global_model=self.dynamic_clip_aggregation(model_weights)
-        elif(self.aggregation_method=="MEADIAN AGGREGATION"):
+        elif(self.aggregation_method=="FIXED_CLIPPED_AVERAGE_AGGREGATION"):
             global_model=self.fixed_clip_aggregation(model_weights)
-        elif(self.aggregation_method=="WEIGHTED AVERAGE - PERFORMANCE SCORES"):
+        elif(self.aggregation_method=="WEIGHTED_AVERAGE_PERFORMANCE_SCORES"):
             model_scores = []
-            model_scores = [node_results["scores"] for node_results in self.result_container.values()]
+            for node_results in self.result_container.values():
+                model_scores += node_results["scores"]
             score_weights = np.exp(model_scores) / np.sum(np.exp(model_scores))
             global_model=self.weighted_score_aggregation(score_weights, model_weights)
-        elif(self.aggregation_method=="WEIGHTED AVERAGE - RECENCY"):
+        elif(self.aggregation_method=="WEIGHTED_AVERAGE_RECENCY"):
             decay_rate = 0.9
             timestamps = chain.from_iterable([node_results["timestamps"] for node_results in self.result_container.values()])
             time_diff_seconds = np.array([(datetime.now() - timestamp).total_seconds() for timestamp in timestamps])
             recency_weights = np.exp(-decay_rate * time_diff_seconds)
             global_model=self.weighted_recency_aggregation(recency_weights,model_weights)
-        elif(self.aggregation_method=="WEIGHTED AVERAGE - PUNISHING UPDATES"):
+        elif(self.aggregation_method=="WEIGHTED_AVERAGE_PUNISHING_UPDATES"):
             current_time = datetime.now()
             minutes_ago = current_time - timedelta(minutes=1)
             recent_update_counts = sum(1 for timestamp in chain.from_iterable([node_results["timestamps"] for node_results in self.result_container.values()])
                                    if timestamp >= minutes_ago)            
             punish_weights = 1 / (recent_update_counts + 1)
             global_model=self.weighted_punish_aggregation(punish_weights,model_weights)
-                
         self.weights = global_model  # payload["best_model_weights"] # Temporary test
         self.update_hp_config()
         self.log_step()
@@ -287,7 +287,11 @@ class Runner:
                 new_config = self.genetic_algorithm_mating_hp_update(
                     hp_values, hp_names, scores
                 )
+            elif self.meta_learning_mode == "NO_META_LEARNING":
+                new_config = self.hp_config
             else:
+                test=self.meta_learning_mode == "NO_META_LEARNING"
+                logger.info(f"Test result is {test}")
                 raise ValueError(
                     f"Invalid value for meta_learning_mode: \
                         {self.meta_learning_mode} was given."
@@ -427,58 +431,58 @@ class Runner:
             open(LOG_PATH / f"parameter_server/{str(time.time())}.pkl", mode="wb"),
         )
 
-    def update_hp_config(self) -> None:
-        """Method to update the hp_config that is given the nodes as
-        baseline to generate its hyper_parameters from.
-        """
-        hp_names = set(["_".join(key.split("_")[:-1]) for key in self.hp_config.keys()])
-        hp_values = dict()
-        scores = []
-        for name in hp_names:
-            hp_values[name] = []
-        update_counter = 0
-        for node_id, node_results in self.result_container.items():
-            for name in hp_names:
-                if name == "learning_rate":
-                    hp_values[name] += [
-                        np.log10(value[name]) for value in node_results["hp_params"]
-                    ]
-                else:
-                    hp_values[name] += [
-                        value[name] for value in node_results["hp_params"]
-                    ]
-            update_counter += len(node_results["hp_params"])
-            scores += node_results["scores"]
-        if update_counter >= 5:
-            if self.meta_learning_mode == "DIRECT_MEANS":
-                new_config = self.gradual_means_hp_update(
-                    hp_values, hp_names, update_rate=1.0
-                )
-            elif self.meta_learning_mode == "DIRECT_SCORE_WEIGHTED_MEANS":
-                new_config = self.gradual_score_weighted_means_hp_update(
-                    hp_values, hp_names, scores, update_rate=1.0
-                )
-            elif self.meta_learning_mode == "GRADUAL_MEANS":
-                new_config = self.gradual_means_hp_update(hp_values, hp_names, scores)
-            elif self.meta_learning_mode == "GRADUAL_SCORE_WEIGHTED_MEANS":
-                new_config = self.gradual_score_weighted_means_hp_update(
-                    hp_values, hp_names, scores
-                )
-            elif self.meta_learning_mode == "DIRECT_GENETIC_ALGORITHM_MATING":
-                new_config = self.genetic_algorithm_mating_hp_update(
-                    hp_values, hp_names, scores, update_rate=1.0
-                )
-            elif self.meta_learning_mode == "GRADUAL_GENETIC_ALGORITHM_MATING":
-                new_config = self.genetic_algorithm_mating_hp_update(
-                    hp_values, hp_names, scores
-                )
-            else:
-                raise ValueError(
-                    f"Invalid value for meta_learning_mode: \
-                        {self.meta_learning_mode} was given."
-                )
-            logger.info(f"New config: {new_config}")
-            self.hp_config = new_config
+    # def update_hp_config(self) -> None:
+    #     """Method to update the hp_config that is given the nodes as
+    #     baseline to generate its hyper_parameters from.
+    #     """
+    #     hp_names = set(["_".join(key.split("_")[:-1]) for key in self.hp_config.keys()])
+    #     hp_values = dict()
+    #     scores = []
+    #     for name in hp_names:
+    #         hp_values[name] = []
+    #     update_counter = 0
+    #     for node_id, node_results in self.result_container.items():
+    #         for name in hp_names:
+    #             if name == "learning_rate":
+    #                 hp_values[name] += [
+    #                     np.log10(value[name]) for value in node_results["hp_params"]
+    #                 ]
+    #             else:
+    #                 hp_values[name] += [
+    #                     value[name] for value in node_results["hp_params"]
+    #                 ]
+    #         update_counter += len(node_results["hp_params"])
+    #         scores += node_results["scores"]
+    #     if update_counter >= 5:
+    #         if self.meta_learning_mode == "DIRECT_MEANS":
+    #             new_config = self.gradual_means_hp_update(
+    #                 hp_values, hp_names, update_rate=1.0
+    #             )
+    #         elif self.meta_learning_mode == "DIRECT_SCORE_WEIGHTED_MEANS":
+    #             new_config = self.gradual_score_weighted_means_hp_update(
+    #                 hp_values, hp_names, scores, update_rate=1.0
+    #             )
+    #         elif self.meta_learning_mode == "GRADUAL_MEANS":
+    #             new_config = self.gradual_means_hp_update(hp_values, hp_names, scores)
+    #         elif self.meta_learning_mode == "GRADUAL_SCORE_WEIGHTED_MEANS":
+    #             new_config = self.gradual_score_weighted_means_hp_update(
+    #                 hp_values, hp_names, scores
+    #             )
+    #         elif self.meta_learning_mode == "DIRECT_GENETIC_ALGORITHM_MATING":
+    #             new_config = self.genetic_algorithm_mating_hp_update(
+    #                 hp_values, hp_names, scores, update_rate=1.0
+    #             )
+    #         elif self.meta_learning_mode == "GRADUAL_GENETIC_ALGORITHM_MATING":
+    #             new_config = self.genetic_algorithm_mating_hp_update(
+    #                 hp_values, hp_names, scores
+    #             )
+    #         else:
+    #             raise ValueError(
+    #                 f"Invalid value for meta_learning_mode: \
+    #                     {self.meta_learning_mode} was given."
+    #             )
+    #         logger.info(f"New config: {new_config}")
+    #         self.hp_config = new_config
 
     def gradual_means_hp_update(
         self,

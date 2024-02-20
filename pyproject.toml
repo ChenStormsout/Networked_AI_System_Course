@@ -14,7 +14,15 @@ tensorflow = "2.15"
 paho-mqtt = "^1.6.1"
 numpy = "^1.26.3"
 loguru = "^0.7.2"
+ipykernel = "^6.29.2"
+pandas = "^2.2.0"
+pyarrow = "^15.0.0"
+nbformat = "^5.9.2"
+kaleido = "0.2.1"
 
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.2"
 
 [build-system]
 requires = ["poetry-core"]

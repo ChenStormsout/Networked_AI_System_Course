@@ -28,7 +28,7 @@ class DatasetGenerator:
             then randomly set.
         """
         self.call_count = 0
-        self.rng = np.random.default_rng()
+        self.rng = np.random.default_rng(np.random.randint(0, 10000))
         self.rotation_proba = self.rng.uniform(low=0.2, high=0.7)
         self.centers = centers
         if self.centers is None:

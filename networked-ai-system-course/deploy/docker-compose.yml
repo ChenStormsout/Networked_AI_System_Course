@@ -11,28 +11,29 @@ services:
       # - ./log/:/mosquitto/log/
     networks:
       - network
-  parameter-server:
-    build:
-      context: ./../src/parameter_server/
-    # restart: unless-stopped
-    depends_on:
-      - mqtt-server
-    networks:
-      - network
-    volumes:
-      - ./../data/experiment_name:/home/dockeruser/app/logs
-    environment:
-      - mqtt_host=mqtt-server
-      - log_path=./logs
-      - RANDOM_SEED=42
-      - meta_learning_mode=DIRECT_MEANS
+  # parameter-server:
+  #   build:
+  #     context: ./../src/parameter_server/
+  #   # restart: unless-stopped
+  #   depends_on:
+  #     - mqtt-server
+  #   networks:
+  #     - network
+  #   volumes:
+  #     - ./../data/experiment_name:/home/dockeruser/app/logs
+  #   environment:
+  #     - mqtt_host=mqtt-server
+  #     - log_path=./logs
+  #     - RANDOM_SEED=42
+  #     - meta_learning_mode=NO_META_LEARNING
+  #     - aggregation_method=AVERAGE_AGGREGATION
   node_1:
     build:
       context: ./../src/node/
     # restart: unless-stopped
     depends_on:
       - mqtt-server
-      - parameter-server
+      # - parameter-server
     networks:
       - network
     volumes:
