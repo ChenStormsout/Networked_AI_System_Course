@@ -178,10 +178,10 @@ class Runner:
                     for single_model_weights in model_weights
                 ]
             )
-            weight_range = 0.5 - (-0.5)  # Range of typical weights
-            fraction_of_range = 0.1  
-            clip_threshold = fraction_of_range * weight_range
-            clipped_weights = np.clip(layer_weights, -clip_threshold, clip_threshold)
+            # weight_range = 0.5 - (-0.5)  # Range of typical weights
+            # fraction_of_range = 0.1  
+            # clip_threshold = fraction_of_range * weight_range
+            clipped_weights = np.clip(layer_weights, -1, 1)
             result.append(np.mean(clipped_weights, axis=0).tolist()  )
         return result
     
@@ -274,7 +274,7 @@ class Runner:
                     hp_values, hp_names, scores, update_rate=1.0
                 )
             elif self.meta_learning_mode == "GRADUAL_MEANS":
-                new_config = self.gradual_means_hp_update(hp_values, hp_names, scores)
+                new_config = self.gradual_means_hp_update(hp_values, hp_names)
             elif self.meta_learning_mode == "GRADUAL_SCORE_WEIGHTED_MEANS":
                 new_config = self.gradual_score_weighted_means_hp_update(
                     hp_values, hp_names, scores
