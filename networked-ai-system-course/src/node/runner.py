@@ -88,16 +88,6 @@ class Runner:
             if "_std" in key:
                 if np.random.random() < 0.3:
                     training_hp_config[key] = self.base_config[key]
-        n_epochs = int(
-            np.clip(
-                np.random.normal(
-                    loc=training_hp_config["n_epochs_mean"],
-                    scale=training_hp_config["n_epochs_std"],
-                ),
-                a_min=1,
-                a_max=10,
-            )
-        )
         n_runs = int(
             np.clip(
                 np.random.normal(
@@ -116,11 +106,12 @@ class Runner:
         for key, value in self.hp_config.items():
             train_log[key] = value
         train_log["n_runs"] = n_runs
-        train_log["n_epochs"] = n_epochs
+        train_log["n_epochs"] = 0
         train_log["weights"] = self.weights
         train_log["iter_count"] = self.iter_counter
         for _ in range(n_runs):
             hyper_param_dict = self.suggest_hyper_params(self.hp_config)
+            
             model = get_model(
                 self.weights,
                 hyper_param_dict["learning_rate"],
@@ -135,20 +126,21 @@ class Runner:
                     f"Pre-training performance: {pre_training_score}",
                 )
                 train_log["pre_training_score"] = pre_training_score
+                train_log["n_epochs"]+=hyper_param_dict["n_epochs"]
             model.fit(
                 X_train,
                 y_train,
                 batch_size=hyper_param_dict["batch_size"],
-                epochs=n_epochs,
+                epochs=hyper_param_dict["n_epochs"],
                 verbose=0,
             )
             models.append(model)
             scores.append(
                 accuracy_score(y_test, model.predict(X_test, verbose=0) > 0.5)
             )
-            hyper_param_dict["n_epochs"] = n_epochs
             hyper_param_dict["n_runs"] = n_runs
             hyper_params.append(hyper_param_dict)
+        train_log["n_epochs"]=train_log["n_epochs"]/n_runs
         train_log["scores"] = scores
         best_model_idx = np.argmax(scores)
 
@@ -232,6 +224,16 @@ class Runner:
             a_min=0,
             a_max=1,
         )
+        suggested_params["n_epochs"] = int(
+            np.clip(
+                np.random.normal(
+                    loc=config["n_epochs_mean"],
+                    scale=config["n_epochs_std"],
+                ),
+                a_min=1,
+                a_max=10,
+            )
+            )
         return suggested_params
 
     def run(self) -> None:

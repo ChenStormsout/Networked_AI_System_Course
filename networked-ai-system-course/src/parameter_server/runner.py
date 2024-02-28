@@ -62,7 +62,7 @@ class Runner:
         """Method to override the on_message method of the Mqtt client.
         Defines the main behaviour of the server in regards to send messages."""
         payload = json.loads(msg.payload)
-        logger.info(f"Got the payload: {payload}")
+        # logger.info(f"Got the payload: {payload}")
         if "target_topic" in payload:
             logger.info(f'Target topic recieved: {payload["target_topic"]}')
             self.mqtt_client.publish(
