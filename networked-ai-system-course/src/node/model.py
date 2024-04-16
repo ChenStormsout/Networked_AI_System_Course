@@ -59,7 +59,9 @@ def get_model(
     model.add(Dense(units=4, activation=LeakyReLU(alpha=0.1)))
     model.add(Dense(units=1, activation="sigmoid"))
     model.compile(
-        optimizer=SGD(learning_rate=0.01, momentum=0.9, nesterov=True),
+        optimizer=SGD(
+            learning_rate=learning_rate, momentum=momentum, nesterov=nesterov
+        ),
         loss=BinaryCrossentropy(),
         metrics=[
             "accuracy",

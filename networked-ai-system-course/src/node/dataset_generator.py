@@ -4,7 +4,8 @@ import numpy as np
 from sklearn.datasets import make_circles, make_moons
 from loguru import logger
 
-RANDOM_SEED = os.environ["RANDOM_SEED"]
+# RANDOM_SEED = os.environ["RANDOM_SEED"]
+RANDOM_SEED = 42
 
 
 logger.add(sys.stderr, format="{time} - {level} - {message}", level="DEBUG")
@@ -28,7 +29,7 @@ class DatasetGenerator:
             then randomly set.
         """
         self.call_count = 0
-        self.rng = np.random.default_rng()
+        self.rng = np.random.default_rng(np.random.randint(0, 10000))
         self.rotation_proba = self.rng.uniform(low=0.2, high=0.7)
         self.centers = centers
         if self.centers is None:
@@ -174,53 +175,63 @@ class DatasetGenerator:
 if __name__ == "__main__":
     # Some test bed
     import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
 
+    subplot_titles = []
+    for name in ["A", "B", "C"]:
+        subplot_titles += (
+            f"Dataset {name} after 1 iteration",
+            f"Dataset {name} after 501 iteration",
+            f"Dataset {name} after 1001 iteration",
+        )
+    fig = make_subplots(rows=3, cols=3, subplot_titles=subplot_titles,
+                        horizontal_spacing = 0.05,
+                        vertical_spacing = 0.1)
     np.random.seed(42)
-    dg = DatasetGenerator()
-    X, y = dg()
-    logger.info(f"Data shape: {X.shape, y.shape}")
-    logger.info(f"{X[:5, :]}")
-    logger.info(f"Unique values: {np.unique(y, return_counts=True)}")
-    fig = go.Figure(
-        go.Scatter(
-            x=X[:, 0],
-            y=X[:, 1],
-            mode="markers",
-            marker=dict(color=["red" if c == 1 else "blue" for c in y]),
+    for r in range(1, 4):
+        dg = DatasetGenerator()
+        X, y = dg()
+        logger.info(f"Data shape: {X.shape, y.shape}")
+        fig.add_trace(
+            go.Scatter(
+                x=X[:, 0],
+                y=X[:, 1],
+                mode="markers",
+                marker=dict(color=["#1f77b4" if c == 1 else "#ff7f0e" for c in y]),
+            ),
+            row=r,
+            col=1,
         )
-    )
-    fig.update_xaxes(range=[-10, 10])
-    fig.update_yaxes(range=[-10, 10])
-    fig.update_layout(width=800, height=800)
-    fig.show()
-    # for _ in range(90):
-    #     X, y = dg()
-    dg.call_count = 45
-    X, y = dg()
-    fig = go.Figure(
-        go.Scatter(
-            x=X[:, 0],
-            y=X[:, 1],
-            mode="markers",
-            marker=dict(color=["red" if c == 1 else "blue" for c in y]),
+        for _ in range(500):
+            X, y = dg()
+        fig.add_trace(
+            go.Scatter(
+                x=X[:, 0],
+                y=X[:, 1],
+                mode="markers",
+                marker=dict(color=["#1f77b4" if c == 1 else "#ff7f0e" for c in y]),
+            ),
+            row=r,
+            col=2,
         )
-    )
-    fig.update_xaxes(range=[-10, 10])
-    fig.update_yaxes(range=[-10, 10])
-    fig.update_layout(width=800, height=800)
-    fig.show()
 
-    dg.call_count = 90
-    X, y = dg()
-    fig = go.Figure(
-        go.Scatter(
-            x=X[:, 0],
-            y=X[:, 1],
-            mode="markers",
-            marker=dict(color=["red" if c == 1 else "blue" for c in y]),
+        for _ in range(500):
+            X, y = dg()
+        fig.add_trace(
+            go.Scatter(
+                x=X[:, 0],
+                y=X[:, 1],
+                mode="markers",
+                marker=dict(color=["#1f77b4" if c == 1 else "#ff7f0e" for c in y]),
+            ),
+            row=r,
+            col=3,
         )
-    )
-    fig.update_xaxes(range=[-10, 10])
-    fig.update_yaxes(range=[-10, 10])
-    fig.update_layout(width=800, height=800)
+    fig.update_layout(margin=dict(t=0,b=0,r=0,l=0))
+    fig.update_xaxes(range=[-7.5, 7.5], title="x1")
+    fig.update_yaxes(range=[-7.5, 7.5], title="x2")
+    fig.update_layout(template="none", showlegend=False,
+                      width=1000,height=1000,
+                      margin=dict(t=20,b=40,r=0,l=40))
     fig.show()
+    fig.write_image("./networked-ai-system-course//figs/datset_image.svg")

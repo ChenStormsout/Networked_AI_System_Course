@@ -1,0 +1,62 @@
+version: "3"
+services:
+  mqtt-server: # Only required for MQTT based communication
+    image: eclipse-mosquitto:latest
+    restart: unless-stopped
+    # ports: #likely to be required for developement. Likely that it can be removed in production
+      # - 1883:1883
+      # - 9001:9001
+    volumes:
+      - ./../src/mqtt_broker/:/mosquitto/config/
+      # - ./log/:/mosquitto/log/
+    networks:
+      - network
+  parameter-server:
+    build:
+      context: ./../src/parameter_server/
+    # restart: unless-stopped
+    depends_on:
+      - mqtt-server
+    networks:
+      - network
+    volumes:
+      - ./../data/${META_LEARNING_MODE}_${AGGREGATION_METHOD}_2_NODES:/home/dockeruser/app/logs
+    environment:
+      - mqtt_host=mqtt-server
+      - log_path=./logs
+      - RANDOM_SEED=42
+      - meta_learning_mode=$META_LEARNING_MODE
+      - aggregation_method=$AGGREGATION_METHOD
+  node_1:
+    build:
+      context: ./../src/node/
+    # restart: unless-stopped
+    depends_on:
+      - mqtt-server
+      - parameter-server
+    networks:
+      - network
+    volumes:
+      - ./../data/${META_LEARNING_MODE}_${AGGREGATION_METHOD}_2_NODES:/home/dockeruser/app/logs
+    environment:
+      - mqtt_host=mqtt-server
+      - log_path=./logs
+      - RANDOM_SEED=42
+  node_2:
+    build:
+      context: ./../src/node/
+    # restart: unless-stopped
+    depends_on:
+      - mqtt-server
+      - parameter-server
+    networks:
+      - network
+    volumes:
+      - ./../data/${META_LEARNING_MODE}_${AGGREGATION_METHOD}_2_NODES:/home/dockeruser/app/logs
+    environment:
+      - mqtt_host=mqtt-server
+      - log_path=./logs
+      - RANDOM_SEED=1337
+
+networks:
+  network:
